@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Rima Hazra e5c160fe - Guessing Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin: 0; background: #0f172a; color: #e5e7eb; }
+    .wrap { max-width: 720px; margin: 6vh auto; padding: 24px; background:#111827; border:1px solid #1f2937; border-radius:16px; }
+    h1 { margin: 0 0 12px; font-size: 1.4rem; }
+    form { margin: 12px 0 20px; display:flex; gap:10px; flex-wrap:wrap; }
+    input[type="number"], input[type="text"] { padding:10px 12px; border-radius:10px; border:1px solid #334155; background:#0b1222; color:#e5e7eb; }
+    button { padding:10px 14px; border:0; border-radius:10px; font-weight:700; cursor:pointer; background:#22c55e; color:#0b1022; }
+    .muted { color:#9ca3af; font-size:0.95rem; }
+    .card { padding:12px 14px; border-radius:10px; background:#0b1222; border:1px solid #1f2937; }
+    a { color:#93c5fd; }
+    code { background:#0b1222; padding:2px 6px; border-radius:6px; }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>Welcome to my Guessing Game</h1>
+    <p class="muted">Enter a number and submit. You can also test by adding <code>?guess=NN</code> to the URL.</p>
+
+    <form id="guessForm" method="get" action="">
+      <label for="guess" class="sr-only" style="position:absolute;left:-9999px;">Guess</label>
+      <input id="guess" name="guess" type="number" placeholder="Enter your guess" />
+      <button type="submit">Submit Guess</button>
+    </form>
+
+    <div class="card">
+      <p id="result">Waiting for input…</p>
+    </div>
+
+    <details style="margin-top:12px;">
+      <summary>Quick test links</summary>
+      <ul>
+        <li><a href="?">No parameter</a></li>
+        <li><a href="?guess=">Empty guess</a></li>
+        <li><a href="?guess=abc">Non-number</a></li>
+        <li><a href="?guess=10">Too low</a></li>
+        <li><a href="?guess=90">Too high</a></li>
+        <li><a href="?guess=49">Correct (49)</a></li>
+      </ul>
+    </details>
+
+    <p class="muted" style="margin-top:16px;">
+      Note: This is a pure HTML/JS mock for quick testing. The Coursera autograder expects a PHP page like <code>guess.php</code> with the same outputs.
+    </p>
+  </main>
+
+  <script>
+    // Required correct answer per your assignment prompt:
+    const CORRECT = 49;
+
+    function getParam(name) {
+      const u = new URL(window.location.href);
+      const v = u.searchParams.get(name);
+      return v;
+    }
+
+    function evaluateGuess() {
+      const out = document.getElementById('result');
+      const raw = getParam('guess');
+
+      if (raw === null) {
+        out.textContent = 'Missing guess parameter';
+        return;
+      }
+      if (raw.length < 1) {
+        out.textContent = 'Your guess is too short';
+        return;
+      }
+      if (!/^[-+]?\d+(\.\d+)?$/.test(raw)) {
+        out.textContent = 'Your guess is not a number';
+        return;
+      }
+
+      const guess = Number(raw);
+      if (guess < CORRECT) {
+        out.textContent = 'Your guess is too low';
+      } else if (guess > CORRECT) {
+        out.textContent = 'Your guess is too high';
+      } else {
+        out.textContent = 'Congratulations - You are right';
+      }
+    }
+
+    // Prefill input from URL, then evaluate
+    (function init() {
+      const raw = getParam('guess');
+      if (raw !== null) {
+        document.getElementById('guess').value = raw;
+      }
+      evaluateGuess();
+    })();
+  </script>
+</body>
+</html>
