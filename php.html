@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Rock Paper Scissors — Rima Hazra</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin: 0; background:#0f172a; color:#e5e7eb; display:flex; min-height:100vh; }
+    .container { margin:auto; width:min(900px, 92vw); }
+    header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
+    header h1 { font-size:1.4rem; margin:0; font-weight:700; }
+    a.btn, button { background:#22c55e; color:#0b1022; border:none; padding:.6rem 1rem; border-radius:.7rem; font-weight:700; cursor:pointer; }
+    a.btn[hidden], button[hidden]{ display:none; }
+    .card { background:#111827; border:1px solid #1f2937; border-radius:1rem; padding:1.25rem; box-shadow:0 10px 30px rgba(0,0,0,.25); }
+    .stack > * + * { margin-top:1rem; }
+    input[type="text"], input[type="password"], input[type="email"] {
+      width:100%; padding:.7rem .9rem; border-radius:.6rem; border:1px solid #374151; background:#0b1222; color:#e5e7eb;
+    }
+    label { display:block; font-size:.95rem; margin:.25rem 0 .4rem; color:#cbd5e1; }
+    .row { display:flex; gap:1rem; flex-wrap:wrap; align-items:center; }
+    .choices button { background:#334155; color:#e5e7eb; }
+    .choices button.active { outline:3px solid #22c55e; }
+    .pill { display:inline-block; padding:.2rem .55rem; border-radius:999px; font-size:.8rem; background:#1f2937; color:#93c5fd; }
+    .muted { color:#94a3b8; }
+    .grid { display:grid; grid-template-columns: repeat(3,1fr); gap:1rem; }
+    .center { text-align:center; }
+    footer { margin-top:2rem; font-size:.85rem; color:#94a3b8; text-align:center; }
+    .hidden { display:none !important; }
+    .result { font-weight:800; font-size:1.2rem; }
+    .win   { color:#22c55e; }
+    .lose  { color:#f87171; }
+    .draw  { color:#60a5fa; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0;}
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header>
+      <h1>Rock · Paper · Scissors</h1>
+      <div class="row">
+        <span id="userTag" class="pill hidden"></span>
+        <a id="logoutBtn" class="btn" href="#logout" hidden>Log out</a>
+      </div>
+    </header>
+
+    <!-- LOGIN "PAGE" -->
+    <section id="loginView" class="card stack">
+      <h2 class="center">Login</h2>
+      <form id="loginForm" class="stack" autocomplete="on">
+        <div>
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" placeholder="you@example.com" required />
+        </div>
+        <div>
+          <label for="pw">Password</label>
+          <input id="pw" name="pw" type="password" placeholder="••••••••" required minlength="3" />
+        </div>
+        <button type="submit" aria-label="Login and start playing">Login</button>
+        <p class="muted center">Use any email and password (client-side demo).</p>
+      </form>
+    </section>
+
+    <!-- GAME "PAGE" -->
+    <section id="gameView" class="card stack hidden" aria-live="polite">
+      <div class="row" style="justify-content:space-between;">
+        <h2>Let’s Play</h2>
+        <div>
+          <span class="pill" id="roundsPill">Rounds: <strong id="rounds">0</strong></span>
+          <span class="pill">Score: <strong id="scoreYou">0</strong> : <strong id="scoreBot">0</strong></span>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div>
+          <h3 class="muted">Your Choice</h3>
+          <div class="choices row">
+            <button type="button" data-move="rock">✊ Rock</button>
+            <button type="button" data-move="paper">✋ Paper</button>
+            <button type="button" data-move="scissors">✌️ Scissors</button>
+          </div>
+        </div>
+        <div class="center">
+          <h3 class="muted">Result</h3>
+          <p id="status" class="result draw">Make a pick to begin…</p>
+          <div class="row" style="justify-content:center; gap:.5rem;">
+            <button id="playBtn" type="button">Play</button>
+            <button id="resetBtn" type="button" class="muted" style="background:#1f2937; color:#e5e7eb;">Reset</button>
+          </div>
+        </div>
+        <div>
+          <h3 class="muted">Computer</h3>
+          <p>Bot picked: <strong id="botPick">—</strong></p>
+        </div>
+      </div>
+
+      <details>
+        <summary>Round Log</summary>
+        <ul id="log" class="stack" style="max-height:240px; overflow:auto; padding-left:1rem;"></ul>
+      </details>
+    </section>
+
+    <footer>Built as a simple single-file demo. ✨</footer>
+  </main>
+
+  <script>
+    // --- Simple "session" with localStorage
+    const loginView = document.getElementById('loginView');
+    const gameView  = document.getElementById('gameView');
+    const userTag   = document.getElementById('userTag');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    const emailInput = document.getElementById('email');
+    const pwInput    = document.getElementById('pw');
+
+    const choices = Array.from(document.querySelectorAll('.choices button'));
+    const playBtn = document.getElementById('playBtn');
+    const resetBtn= document.getElementById('resetBtn');
+
+    const statusEl = document.getElementById('status');
+    const botPickEl= document.getElementById('botPick');
+    const logEl    = document.getElementById('log');
+
+    const scoreYou = document.getElementById('scoreYou');
+    const scoreBot = document.getElementById('scoreBot');
+    const roundsEl = document.getElementById('rounds');
+
+    let selected = null;
+    let score = { you: 0, bot: 0, rounds: 0 };
+
+    function setView(isLoggedIn, email='') {
+      if (isLoggedIn) {
+        loginView.classList.add('hidden');
+        gameView.classList.remove('hidden');
+        userTag.textContent = email;
+        userTag.classList.remove('hidden');
+        logoutBtn.hidden = false;
+      } else {
+        gameView.classList.add('hidden');
+        loginView.classList.remove('hidden');
+        userTag.classList.add('hidden');
+        logoutBtn.hidden = true;
+      }
+    }
+
+    function restoreSession() {
+      const ses = JSON.parse(localStorage.getItem('rps_session') || 'null');
+      if (ses && ses.email) {
+        setView(true, ses.email);
+      } else {
+        setView(false);
+      }
+      const sc = JSON.parse(localStorage.getItem('rps_score') || 'null');
+      if (sc) { score = sc; renderScore(); }
+    }
+
+    function saveSession(email) {
+      localStorage.setItem('rps_session', JSON.stringify({ email }));
+    }
+
+    function clearSession() {
+      localStorage.removeItem('rps_session');
+    }
+
+    function renderScore() {
+      scoreYou.textContent = score.you;
+      scoreBot.textContent = score.bot;
+      roundsEl.textContent = score.rounds;
+    }
+
+    function pickBot() {
+      const arr = ['rock','paper','scissors'];
+      return arr[Math.floor(Math.random()*3)];
+    }
+
+    function decide(you, bot) {
+      if (you === bot) return 'draw';
+      if ((you==='rock' && bot==='scissors') ||
+          (you==='paper' && bot==='rock') ||
+          (you==='scissors' && bot==='paper')) return 'win';
+      return 'lose';
+    }
+
+    function setStatus(kind, text) {
+      statusEl.className = `result ${kind}`;
+      statusEl.textContent = text;
+    }
+
+    function addLog(text) {
+      const li = document.createElement('li');
+      li.textContent = text;
+      logEl.prepend(li); // newest first
+    }
+
+    // --- Login handling (client-side demo)
+    document.getElementById('loginForm').addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const email = emailInput.value.trim();
+      const pw = pwInput.value.trim();
+      if (!email || !email.includes('@') || pw.length < 3) {
+        alert('Enter a valid email and a password (min 3 chars).');
+        return;
+      }
+      saveSession(email);
+      setView(true, email);
+    });
+
+    // --- Logout
+    logoutBtn.addEventListener('click', (e)=>{
+      e.preventDefault();
+      clearSession();
+      setView(false);
+    });
+
+    // --- Choice buttons
+    choices.forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        choices.forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        selected = btn.dataset.move;
+        setStatus('draw', `You chose ${selected}. Click "Play".`);
+      });
+    });
+
+    // --- Play a round
+    playBtn.addEventListener('click', ()=>{
+      if (!selected) {
+        setStatus('draw','Pick rock, paper, or scissors first.');
+        return;
+      }
+      const bot = pickBot();
+      const result = decide(selected, bot);
+      botPickEl.textContent = bot;
+
+      score.rounds += 1;
+      if (result === 'win') score.you += 1;
+      if (result === 'lose') score.bot += 1;
+
+      localStorage.setItem('rps_score', JSON.stringify(score));
+      renderScore();
+
+      const msg = result === 'win' ? 'You win! 🎉' : result === 'lose' ? 'You lose. 😿' : 'Draw. 🤝';
+      setStatus(result, `${msg} You: ${selected} vs Bot: ${bot}.`);
+      addLog(`Round ${score.rounds}: You=${selected}, Bot=${bot} → ${msg.replace(/[\u{1F300}-\u{1FAFF}]/gu,'')}`);
+    });
+
+    // --- Reset
+    resetBtn.addEventListener('click', ()=>{
+      score = { you:0, bot:0, rounds:0 };
+      localStorage.setItem('rps_score', JSON.stringify(score));
+      renderScore();
+      botPickEl.textContent = '—';
+      logEl.innerHTML = '';
+      choices.forEach(b=>b.classList.remove('active'));
+      selected = null;
+      setStatus('draw','Scores cleared. Make a pick to begin…');
+    });
+
+    // Init
+    restoreSession();
+  </script>
+</body>
+</html>
